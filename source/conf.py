@@ -36,6 +36,7 @@ user_agent = 'Mozilla/5.0 (X11; Linux x86_64; rv:25.0) Gecko/20100101 Firefox/25
 
 # this link has been unreliable but still seems to exist as of 3/2021. revisit in the future
 linkcheck_ignore = ['http://trapdoor.bren.ucsb.edu/research/2014Group_Projects/documents/BermudaWind_Final_Report_2014-05-07.pdf']
+linkcheck_retries = 3  # override default of 1
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
