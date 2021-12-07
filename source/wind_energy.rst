@@ -51,7 +51,7 @@ where
 
 Two probability distributions are commonly used in wind data analysis: 1) the Rayleigh and 2) the Weibull distributions (Manwell et al. 2009). The Weibull distribution can better represent a wider variety of wind regimes (Celik 2003; Manwell et al. 2009), and is given as
 
-.. math:: f(V_j) = \frac{k}{\lambda}\left(\frac{V_j}{\lambda}\right)^{k-1}e^{-\left(\frac{V_j}{\lambda}\right)^k}
+.. math:: f(V) = \frac{k}{\lambda}\left(\frac{V_j}{\lambda}\right)^{k-1}e^{-\left(\frac{V}{\lambda}\right)^k}
    :label: weibull_dist
 
 where :math:`k` and :math:`\lambda` are the shape and scale factors, respectively. The shape factor, :math:`k`, determines the shape of the Weibull probability density function (:numref:`weibull-fig`). The probability density function shows a sharper peak as :math:`k` increases, indicating that there are consistent wind speeds around the mean wind speed. On the other hand, the function becomes smoother as k decreases, indicating more variation in wind speed and more frequent low and high wind speeds. The model requires wind speed inputs to be in terms of the estimated Weibull parameters, versus taking in raw wind speed data. For our sample data we used a MATLAB function, `wblfit <https://kr.mathworks.com/help/stats/wblfit.html>`_, to estimate :math:`k` and :math:`\lambda` at the wind speed reference height (height at which wind speeds were observed or estimated), which returns the maximum likelihood estimates of the parameters of the Weibull distribution given the values in the wind time series data. This was done for each wind speed observation point. This can also be accomplished in R (see `this tutorial <https://stats.stackexchange.com/questions/60511/weibull-distribution-parameters-k-and-c-for-wind-speed-data>`_).
@@ -67,27 +67,28 @@ where :math:`k` and :math:`\lambda` are the shape and scale factors, respectivel
 Wind power density is calculated at the hub height :math:`Z` (m) of a wind turbine (:numref:`weibull-fig`), which means all variables in :eq:`wind_power_density` and :eq:`weibull_dist` need to be converted into the appropriate value at hub height.
 Mean air density :math:`\rho` at the hub height is estimated as:
 
-.. math:: \rho = \rho_r - b\cdot Z
+.. math:: \rho = \rho_0 - b\cdot Z
+   :label: air_density
 
 where
 
-* :math:`\rho_r` is the reference air density at sea level
+* :math:`\rho_0` is the reference air density at sea level
 * :math:`b` is the air density coefficient
 * :math:`Z` is the wind turbine hub height (:math:`m`)
 
-Using values of :math:`\rho = 1.225` and :math:`b = 1.194\cdot 10^{-4}`, this approximates the U.S. Standard Atmosphere profile for air density (National Oceanic and Atmospheric Administration, 1976).
+Using values of :math:`\rho_0 = 1.225` and :math:`b = 1.194\cdot 10^{-4}`, this approximates the U.S. Standard Atmosphere profile for air density (National Oceanic and Atmospheric Administration, 1976).
 
 
 The model applies the wind profile power law to estimate wind speed (:math:`V`) at hub height :math:`Z` (Elliott et al., 1986):
 
 .. math:: V = V_r\cdot \left(\frac{Z}{Z_r}\right)^\alpha
+   :label: wind_speed
 
 where
 
 * :math:`V_{r}` is the wind speed (:math:`ms^{-1}`) at height :math:`Z_r`
 * :math:`Z_r` is the reference height (:math:`m`) where wind data are obtained.
 * :math:`\alpha` is the power law exponent, which is an empirically derived coefficient and varies with the stability of the atmosphere. For neutral stability condition, :math:`\alpha` is approximately 1/7 (0.143) for land surfaces, which is widely applicable to adjust wind speed on land (Elliott et al., 1986). The power law exponent has different value on ocean surfaces. Hsu et al. (1994) found that :math:`\alpha = 0.11\pm0.03` for ocean surface under near-neutral atmospheric stability conditions. The wind profile of the atmospheric boundary layer can be approximated more accurately using the log wind profile equation that accounts for surface roughness and atmospheric stability (Manwell et al. 2009). This model uses a constant value of :math:`\alpha = 0.11`.
-
 
 Wind power density (PD) outputs provide suitability information for a wind energy development project in terms of wind resource. Pacific Northwest Laboratories categorized wind power density and wind speed into seven classes based on United States wind atlas (:numref:`wind-power-density-fig`) (Manwell et al. 2009). Areas designated as class 4 or greater are considered to be suitable for most wind energy development. Class 3 areas are suitable for wind energy development if large turbines are used. Class 1 and 2 are rarely considered as suitable areas for wind energy development in terms of energy potential. Wind resources vary considerably over space and a more detailed categorization of wind power density for five topographical conditions was developed in Europe, which includes sheltered terrain, open plain, sea coast, open sea, hills and ridges (:numref:`wind-power-density-fig`) (Manwell et al. 2009). The wind resource classification for sea coast and open sea may provide better information on the suitability of offshore wind energy projects.
 
@@ -117,26 +118,26 @@ To provide flexibility for a variety of different turbine types without requirin
 .. math:: P(V) =
    \begin{cases}
       0 & V < V_{cin} \\
-      (V^m - V^m_{in})/(V^m_{rate} - V^m_{in}) & V_{cin} \leq V < V_{rate} \\
+      \frac{V^m - V^m_{cin}}{V^m_{rate} - V^m_{cin}}P_{rate} & V_{cin} \leq V < V_{rate} \\
       P_{rate} & V_{rate} \leq V \leq V_{cout} \\
       0 & V > V_{cout}\\
    \end{cases}
+   :label: turbine_power
 
-where :math:`m` is an exponent of the output power curve (usually 1 or 2). Using this approach, the energy output, :math:`O` (MWh), generated by a wind turbine can be calculated using
+where :math:`m` is an exponent of the output power curve (usually 1 or 2). Using this approach, the energy output, :math:`E` (MWh/yr), generated by a wind farm can be calculated using
 
-.. math:: O = 365\cdot \frac{\rho}{\rho_0} P_{rate}\left(\int^{V_{rate}}_{V_{cin}} \frac{V^m - V^m_{cin}}{V^m_r-V^m_{cin}} f(V)dV
-     + \int^{V_{cout}}_{V_{rate}} f(V) dV\right)(1- lossrate)
+.. math:: E = 365\cdot n\cdot \frac{\rho}{\rho_0} P_{rate}\left(\int^{V_{rate}}_{V_{cin}} \frac{V^m - V^m_{cin}}{V^m_{rate}-V^m_{cin}} f(V)dV + \int^{V_{cout}}_{V_{rate}} f(V) dV\right)(1 - lossrate)
+   :label: energy_output
 
 where
 
-* :math:`\rho_0` is air density of standard atmosphere (e.g. :math:`1.225 kg m^{-3}` for U.S. standard atmosphere air density at sea level)
-* :math:`lossrate` is a decimal value which represents energy losses due to a combination of downtime, power conversion efficiency, and electrical grid losses (default value is .05).
+* :math:`f(V)` is the Weibull probability density function, defined in :eq:`weibull_dist`
+* :math:`n` is the number of turbines
+* :math:`lossrate` is the proportion of energy lost due to a combination of downtime, power conversion efficiency, and electrical grid losses (default value is .05).
 
-All of these parameters are included in the global parameters `.csv` file and may be changed by the user from their defaults. Total farm energy output is equal to the individual turbine output multiplied by the number of turbines, :math:`n`,
+All of these parameters are included in the global parameters `.csv` file and may be changed by the user from their defaults.
 
-.. math:: E = n\cdot O
-
-The InVEST software comes with default technical and financial information about two common turbine sizes, the 3.6 MW and 5.0 MW turbines. The information for each turbine is given in `.csv` files in the `\Input` directory and is a required input into the model. The user can use the default data, edit a file, or create a new file to assess different turbine sizes or update specific characteristics. The files must retain the same format - only parameter values may safely be modified. It is recommended to save edits as new `.csv` files rather than overwriting the default data.
+The InVEST software comes with default technical and financial information about two common turbine sizes, the 3.6 MW and 5.0 MW turbines. The information for each turbine is given in `.csv` files in the `\Input` directory and is a required input into the model.
 
 Offset Carbon
 -------------
@@ -152,27 +153,107 @@ The value of wind power is measured as the discounted pre-tax net revenue from p
 
 Gross revenue :math:`R` collected in a given year :math:`t` is defined as
 
-.. math:: R_t = s\cdot E_t
+.. math:: R_t = s_t\cdot E
+   :label: revenue
 
 where
 
-* :math:`s` is the price per kWh
-* :math:`E_t` is the amount of kWh supplied to the grid by the wind farm in year :math:`t`.
+* :math:`E` is the annual energy output, defined in :eq:`energy_output`
+* :math:`s_t` is the price per kWh in year :math:`t`.
 
+If the user provides a price table, then :math:`s_t` is the value given in that table for year :math:`t`. If instead the user provides an initial price and annual rate of change, :math:`s_t` is defined as
+
+.. math:: s_t = g * (1 + h)^t
+   :label: energy_price
+
+where :math:`g` is the initial price, and :math:`h` is the annual rate of change in price.
 
 The `net present value (NPV) <https://en.wikipedia.org/wiki/Net_present_value>`_ of energy for a given wind farm is:
 
-.. math:: NPV = \sum^T_{t=1}(R_t-C_t)(1+i)^{-t}
+.. math:: NPV = \sum^T_{t=1}(R_t-C_{\text{ongoing}})(1+i)^{-t}
 
 where
 
-* :math:`C_t` are the aggregate costs in year :math:`t`
+* :math:`C_{\text{ongoing}}` are the aggregate costs in year :math:`t`
 * :math:`T` represents the expected lifetime of the facility. The summation begins at :math:`t=1` because it is assumed that energy is not collected in the first year during the construction phase.
 * :math:`i` represents the `discount rate <https://en.wikipedia.org/wiki/Discount_rate>`_ or `weighted average cost of capital (WACC) <https://en.wikipedia.org/wiki/Weighted_average_cost_of_capital>`_.
 
 Both :math:`T` and :math:`i` can be changed by the user; :math:`T` can be found in the global parameters `.csv` file and :math:`i` is entered in the valuation section of the user interface. For projects that are financed by both debt and equity and where there is a significant amount of risk associated with establishing and maintaining the projected stream of revenues, WACC is a more appropriate method for establishing the time value of money. As this parameter enters into the calculation in the same way as a discount rate would, if you prefer you can input an appropriate discount rate and interpret the results accordingly. We do not supply a default value, but Levitt et al. (2011) suggest a WACC value of .116 based on a comprehensive analysis of industry specific discount rates and different debt/equity structures in Europe and the U.S. This is higher than discount rates typically used elsewhere, such as in standard cost benefit analysis, so you may find your application justifies a different rate.
 
 Costs can be separated into one-time capital costs and ongoing operations and management costs. During the construction phase, expenditures are made on turbines, foundations, electrical transmission equipment, and other miscellaneous costs associated with development, procurement, and engineering. At the end of the farm's usable lifetime, the firm must remove their equipment. The default information supplied is based on an extensive review of peer-reviewed publications, industry reports, and press releases. This information is summarized below.
+
+
+The cost per turbine unit is defined as:
+
+.. math:: C_{\text{unit}} = n(l_{\text{infield}}C_{\text{infield}} + C_{\text{foundation}} + C_{\text{turbine}})
+   :label: unit_cost
+
+where
+
+* :math:`l_{\text{infield}}` is the length of infield cable per turbine
+* :math:`C_{\text{infield}}` is the cost of infield cable
+* :math:`C_{\text{foundation}}` is the cost of a turbine foundation
+* :math:`C_{\text{turbine}}` is the cost of a turbine
+
+.. math:: C_{\text{cable}} = \begin{cases}
+      C_{\text{AC}}l + D_{\text{AC}}nw & l \leq k \\
+      C_{\text{DC}}l + D_{\text{DC}}nw & l > k \\
+   \end{cases}
+   :label: cable_cost
+
+where
+
+* :math:`C_{\text{AC}}` is the cost of AC cable that scales with length
+* :math:`C_{\text{DC}}` is the cost of DC cable that scales with length
+* :math:`D_{\text{AC}}` is the cost of AC cable that scales with capacity
+* :math:`D_{\text{DC}}` is the cost of DC cable that scales with capacity
+* :math:`w` is the maximum power output of one turbine
+* :math:`k` is the distance threshold above which to use DC rather than AC
+
+
+.. math:: C_{\text{cap}} = C_{\text{unit}}n + C_{\text{cable}}
+   :label: cap
+
+.. math:: C_{\text{capex}} = \frac{C_{\text{cap}}}{1 - C_{\text{install}} - C_{\text{misc}}}
+   :label: capex
+
+.. math:: C_{\text{ongoing}} = C_{\text{capex}}\cdot C_{\text{op}}
+   :label: ongoing_cost
+
+.. math:: C_{\text{decommission}} = C_{\text{capex}}\cdot C_{\text{decommission}}
+   :label: decommission_cost
+
+where
+
+* :math:`C_{\text{install}}` is the proportion of `C_{\text{capex}}` spent on installation
+* :math:`C_{\text{misc}}` is the proportion of `C_{\text{capex}}` spent on miscellaneous costs
+* :math:`C_{\text{op}}` is the proportion of `C_{\text{capex}}` spent on ongoing operations and maintenance costs
+
+
+.. math:: \text{LCOE} = \frac
+   {\sum^T_{t=1}
+      \frac
+         {C_{\text{ongoing}}}
+         {(1+i)^t} +
+      \frac
+         {C_{\text{decommission}}}
+         {(1+i)^T} +
+      C_{\text{capex}}}
+   {\sum^T_{t=1}
+      \frac
+         {E}
+         {(1+i)^t}}
+
+where
+
+* :math:`C_{\text{capex}}` is the initial capital expenditures
+* :math:`C_{\text{ongoing}}` is the operations and management parameter
+* :math:`C_{\text{decommission}}` is the decommissioning parameter
+* :math:`E` is the annual energy production, defined in :eq:`energy_output`
+* :math:`i` is the discount or WACC rate
+* :math:`T` is the lifespan of the wind farm in years
+
+
 
 
 Turbines
@@ -258,12 +339,12 @@ This model is designed to accept a fixed unit price for a kilowatt hour (kWh) of
 Levelized Cost of Energy
 ------------------------
 
-The levelized cost of energy (https://en.wikipedia.org/wiki/Cost_of_electricity_by_source) (LCOE) is the unit price that would need to be received for energy that would set the present value of the project equal to zero. As such, it gives the lowest price/kWh that a wind farm developer could receive before they considered a project not worthwhile. The output given by the model is in terms of $/kWh and is calculated as:
+The `levelized cost of energy (LCOE) <(https://en.wikipedia.org/wiki/Cost_of_electricity_by_source)>`_ is the unit price that would need to be received for energy that would set the present value of the project equal to zero. As such, it gives the lowest price per kWh that a wind farm developer could receive before they considered a project not worthwhile. The output given by the model is in terms of currency/kWh and is calculated as:
 
-.. math:: LCOE = \frac{\sum^T_{t=1}\frac{O\&M\cdot CAPEX}{(1+i)^t}+\frac{D\cdot CAPEX}{(1+i)^T}+CAPEX}{\sum^T_{t=1}\frac{E_t}{(1+i)^t}}
+.. math:: \text{LCOE} = \frac{\sum^T_{t=1}\frac{\text{O&M}\cdot \text{CAPEX}}{(1+i)^t}+\frac{D\cdot \text{CAPEX}}{(1+i)^T}+\text{CAPEX}}{\sum^T_{t=1}\frac{E_t}{(1+i)^t}}
 
 
-Where :math:`CAPEX` is the initial capital expenditures, :math:`O\&M` is the operations and management parameter, :math:`D` is the decommissioning parameter, :math:`E_t` is the annual energy produced in kWh, :math:`i` is the discount or WACC rate, and :math:`t` is the annual time step, where :math:`t=\{1\ldots T\}`.
+Where :math:`CAPEX` is the initial capital expenditures, :math:`\text{O&M}` is the operations and management parameter, :math:`D` is the decommissioning parameter, :math:`E_t` is the annual energy produced in kWh, :math:`i` is the discount or WACC rate, and :math:`t` is the annual time step, where :math:`t=\{1\ldots T\}`.
 
 Validation
 ----------
@@ -333,14 +414,14 @@ Data Needs
 
   Columns:
 
-  - :investspec:`wind_energy global_wind_parameters_path.rows.air_density`
-  - :investspec:`wind_energy global_wind_parameters_path.rows.exponent_power_curve`
+  - :investspec:`wind_energy global_wind_parameters_path.rows.air_density` (:math:`\rho_0` in equation :eq:`air_density`)
+  - :investspec:`wind_energy global_wind_parameters_path.rows.exponent_power_curve` (:math:`m` in equation :eq:`turbine_power`)
   - :investspec:`wind_energy global_wind_parameters_path.rows.decommission_cost`
-  - :investspec:`wind_energy global_wind_parameters_path.rows.operation_maintenance_cost`
-  - :investspec:`wind_energy global_wind_parameters_path.rows.miscellaneous_capex_cost`
-  - :investspec:`wind_energy global_wind_parameters_path.rows.installation_cost`
-  - :investspec:`wind_energy global_wind_parameters_path.rows.infield_cable_length`
-  - :investspec:`wind_energy global_wind_parameters_path.rows.infield_cable_cost`
+  - :investspec:`wind_energy global_wind_parameters_path.rows.operation_maintenance_cost` (:math:`C_{\text{op}}` in equation :eq:`ongoing_cost`)
+  - :investspec:`wind_energy global_wind_parameters_path.rows.miscellaneous_capex_cost` (:math:`C_{\text{misc}}` in equation :eq:`capex`)
+  - :investspec:`wind_energy global_wind_parameters_path.rows.installation_cost` (:math:`C_{\text{install}}` in equation :eq:`capex`)
+  - :investspec:`wind_energy global_wind_parameters_path.rows.infield_cable_length` (:math:`l_{infield}` in equation :eq:`unit_cost`)
+  - :investspec:`wind_energy global_wind_parameters_path.rows.infield_cable_cost` (:math:`C_{infield}` in equation :eq:`unit_cost`)
   - :investspec:`wind_energy global_wind_parameters_path.rows.mw_coef_ac`
   - :investspec:`wind_energy global_wind_parameters_path.rows.mw_coef_dc`
   - :investspec:`wind_energy global_wind_parameters_path.rows.cable_coef_ac`
@@ -348,8 +429,8 @@ Data Needs
   - :investspec:`wind_energy global_wind_parameters_path.rows.ac_dc_distance_break`
   - :investspec:`wind_energy global_wind_parameters_path.rows.time_period`
   - :investspec:`wind_energy global_wind_parameters_path.rows.carbon_coefficient`
-  - :investspec:`wind_energy global_wind_parameters_path.rows.air_density_coefficient`
-  - :investspec:`wind_energy global_wind_parameters_path.rows.loss_parameter`
+  - :investspec:`wind_energy global_wind_parameters_path.rows.air_density_coefficient` (:math:`b` in equation :eq:`air_density`)
+  - :investspec:`wind_energy global_wind_parameters_path.rows.loss_parameter` (:math:`lossrate` in equation :eq:`energy_output`)
 
 
 Turbine Properties
@@ -367,10 +448,10 @@ Turbine Properties
   - :investspec:`wind_energy turbine_parameters_path.rows.rated_wspd`
   - :investspec:`wind_energy turbine_parameters_path.rows.cut_out_wspd`
   - :investspec:`wind_energy turbine_parameters_path.rows.turbine_rated_pwr`
-  - :investspec:`wind_energy turbine_parameters_path.rows.turbine_cost`
+  - :investspec:`wind_energy turbine_parameters_path.rows.turbine_cost` (:math:`C_{turbine}` in equation :eq:`unit_cost`)
 
 
-- :investspec:`wind_energy number_of_turbines`
+- :investspec:`wind_energy number_of_turbines` (:math:`n` in the equations above)
 - :investspec:`wind_energy min_depth`
 - :investspec:`wind_energy max_depth`
 - :investspec:`wind_energy min_distance`
@@ -381,7 +462,7 @@ Valuation
 
 - :investspec:`wind_energy valuation_container`
 
-- :investspec:`wind_energy foundation_cost` The cost of a foundation will depend on the type of foundation selected, which itself depends on a variety of factors including depth and turbine choice.
+- :investspec:`wind_energy foundation_cost` The cost of a foundation will depend on the type of foundation selected, which itself depends on a variety of factors including depth and turbine choice. (:math:`C_{foundation}` in equation :eq:`unit_cost`)
 
 - :investspec:`wind_energy discount_rate` The discount rate reflects preferences for immediate benefits over future benefits (e.g., would an individual rather receive $10 today or $10 five years from now?)
 
@@ -412,12 +493,12 @@ Valuation
   Columns:
 
   - :investspec:`wind_energy wind_schedule.columns.year`
-  - :investspec:`wind_energy wind_schedule.columns.price`
+  - :investspec:`wind_energy wind_schedule.columns.price` (:math:`s_t` in equation :eq:`revenue`)
 
 
-- :investspec:`wind_energy wind_price`
+- :investspec:`wind_energy wind_price` (:math:`g` in equation :eq:`energy_price`)
 
-- :investspec:`wind_energy rate_change`
+- :investspec:`wind_energy rate_change` (:math:`h` in equation :eq:`energy_price`)
 
 
 Interpreting Results
