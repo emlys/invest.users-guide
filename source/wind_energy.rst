@@ -22,6 +22,12 @@ This wind energy model provides an easily replicable interface to assess the via
 
 To run the model, you are asked to supply information into the graphical user interface. This includes information about wind energy conditions, the type of turbine, number of turbines, the area of interest, etc. To make the model easier to run, it includes default data in `.csv` tables on two common offshore wind turbines: 3.6 MW and 5.0 MW. We also include two wind speed datasets: a global dataset and a dataset covering the Northwest Atlantic. Finally, it includes a table of less commonly changed default values used to parameterize various parts of the model, called the "Global Wind Energy Parameters" file. These `.csv` files are required inputs, and may be modified if alternate values are desired by directly editing the files using a text editor or Microsoft Excel. When modifying these files, it is recommended that the user make a copy of the default `.csv` file so as not to lose the original default values.
 
+.. _wind-turbine-fig:
+
+.. figure:: ./wind_energy/wind_turbine.png
+   :align: center
+
+   A schematic diagram of a wind turbine (https://www.daviddarling.info/encyclopedia/H/AE_hub_height.html)
 
 
 The Model
@@ -58,18 +64,30 @@ where :math:`k` and :math:`\lambda` are the shape and scale factors, respectivel
 
    Example of Weibull probability density function with various shape factors (:math:`k`), where mean wind velocity = :math:`6 ms^{-1}` (Manwell et al., 2009).
 
-Wind power density is calculated at the hub height :math:`Z` (m) of a wind turbine (:numref:`weibull-fig`), which means all variables in :eq:`wind_power_density` and :eq:`weibull_dist` need to be converted into the appropriate value at hub height. Mean air density :math:`\rho` was estimated as :math:`\rho=1.225-(1.194\cdot 10^{-4})Z`, which approximates the U.S. Standard Atmosphere profile for air density (National Oceanic and Atmospheric Administration, 1976). We applied the wind profile power law to estimate wind speed (:math:`V`) at hub height :math:`Z` (Elliott et al., 1986).
+Wind power density is calculated at the hub height :math:`Z` (m) of a wind turbine (:numref:`weibull-fig`), which means all variables in :eq:`wind_power_density` and :eq:`weibull_dist` need to be converted into the appropriate value at hub height.
+Mean air density :math:`\rho` at the hub height is estimated as:
 
-.. math:: \frac{V}{V_r} = \left(\frac{Z}{Z_r}\right)^\alpha
+.. math:: \rho = \rho_r - b\cdot Z
 
-where :math:`V` is wind speed (:math:`ms^{-1}`) at the hub height :math:`Z` (m) of a wind turbine, and :math:`V_{r}` is wind speed (:math:`ms^{-1}`) at the reference height :math:`Z_r` (m) where wind data are obtained. :math:`\alpha` is power law exponent, which is an empirically derived coefficient and varies with the stability of the atmosphere. For neutral stability condition, α is approximately 1/7 (0.143) for land surfaces, which is widely applicable to adjust wind speed on land (Elliott et al., 1986). The power law exponent has different value on ocean surfaces. Hsu et al. (1994) found that :math:`\alpha = 0.11\pm0.03` for ocean surface under near-neutral atmospheric stability conditions. The wind energy model uses :math:`\alpha = 0.11` as a default value to adjust wind speed on the ocean surface. The wind profile of the atmospheric boundary layer can be approximated more accurately using the log wind profile equation that accounts for surface roughness and atmospheric stability (Manwell et al. 2009).
+where
 
-.. _wind-turbine-fig:
+* :math:`\rho_r` is the reference air density at sea level
+* :math:`b` is the air density coefficient
+* :math:`Z` is the wind turbine hub height (:math:`m`)
 
-.. figure:: ./wind_energy/wind_turbine.png
-   :align: center
+Using values of :math:`\rho = 1.225` and :math:`b = 1.194\cdot 10^{-4}`, this approximates the U.S. Standard Atmosphere profile for air density (National Oceanic and Atmospheric Administration, 1976).
 
-   A schematic diagram of a wind turbine (https://www.daviddarling.info/encyclopedia/H/AE_hub_height.html)
+
+The model applies the wind profile power law to estimate wind speed (:math:`V`) at hub height :math:`Z` (Elliott et al., 1986):
+
+.. math:: V = V_r\cdot \left(\frac{Z}{Z_r}\right)^\alpha
+
+where
+
+* :math:`V_{r}` is the wind speed (:math:`ms^{-1}`) at height :math:`Z_r`
+* :math:`Z_r` is the reference height (:math:`m`) where wind data are obtained.
+* :math:`\alpha` is the power law exponent, which is an empirically derived coefficient and varies with the stability of the atmosphere. For neutral stability condition, :math:`\alpha` is approximately 1/7 (0.143) for land surfaces, which is widely applicable to adjust wind speed on land (Elliott et al., 1986). The power law exponent has different value on ocean surfaces. Hsu et al. (1994) found that :math:`\alpha = 0.11\pm0.03` for ocean surface under near-neutral atmospheric stability conditions. The wind profile of the atmospheric boundary layer can be approximated more accurately using the log wind profile equation that accounts for surface roughness and atmospheric stability (Manwell et al. 2009). This model uses a constant value of :math:`\alpha = 0.11`.
+
 
 Wind power density (PD) outputs provide suitability information for a wind energy development project in terms of wind resource. Pacific Northwest Laboratories categorized wind power density and wind speed into seven classes based on United States wind atlas (:numref:`wind-power-density-fig`) (Manwell et al. 2009). Areas designated as class 4 or greater are considered to be suitable for most wind energy development. Class 3 areas are suitable for wind energy development if large turbines are used. Class 1 and 2 are rarely considered as suitable areas for wind energy development in terms of energy potential. Wind resources vary considerably over space and a more detailed categorization of wind power density for five topographical conditions was developed in Europe, which includes sheltered terrain, open plain, sea coast, open sea, hills and ridges (:numref:`wind-power-density-fig`) (Manwell et al. 2009). The wind resource classification for sea coast and open sea may provide better information on the suitability of offshore wind energy projects.
 
@@ -96,20 +114,21 @@ The amount of energy harvestable from a wind turbine in a particular location de
 To provide flexibility for a variety of different turbine types without requiring the user to manually enter a power curve, we estimate the output power :math:`P` (kW) of a wind turbine using a polynomial modeling approach (Jafarian & Ranjbar 2010):
 
 
-.. math:: P(V) = \left\{\begin{array}{ll} 0 & V < V_{cin} \mathrm{\ or\ } V>V_{cout}\\
-              P_{rate} & V_{rate} < V < V_{cout}\\
-	      (V^m - V^m_{in})/(V^m_{rate} - V^m_{in}) & V_{cin} \leq V \leq V_{rate}\\
-	      \end{array}\right.
+.. math:: P(V) =
+   \begin{cases}
+      0 & V < V_{cin} \\
+      (V^m - V^m_{in})/(V^m_{rate} - V^m_{in}) & V_{cin} \leq V < V_{rate} \\
+      P_{rate} & V_{rate} \leq V \leq V_{cout} \\
+      0 & V > V_{cout}\\
+   \end{cases}
 
+where :math:`m` is an exponent of the output power curve (usually 1 or 2). Using this approach, the energy output, :math:`O` (MWh), generated by a wind turbine can be calculated using
 
-where, :math:`m` is an exponent of the output power curve (usually 1 or 2). Using this approach, the energy output, :math:`O` (MWh), generated by a wind turbine can be calculated using
-
-.. math:: O = nday\cdot \frac{\rho}{\rho_0} P_{rate}\left(\int^{V_rate}_{V_{cin}} \frac{V^m - V^m_{cin}}{V^m_r-V^m_{cin}} f(V)dV
+.. math:: O = 365\cdot \frac{\rho}{\rho_0} P_{rate}\left(\int^{V_{rate}}_{V_{cin}} \frac{V^m - V^m_{cin}}{V^m_r-V^m_{cin}} f(V)dV
      + \int^{V_{cout}}_{V_{rate}} f(V) dV\right)(1- lossrate)
 
 where
 
-* :math:`nday` is the number of days for energy output (e.g. :math:`nday = 365` days for annual energy output)
 * :math:`\rho_0` is air density of standard atmosphere (e.g. :math:`1.225 kg m^{-3}` for U.S. standard atmosphere air density at sea level)
 * :math:`lossrate` is a decimal value which represents energy losses due to a combination of downtime, power conversion efficiency, and electrical grid losses (default value is .05).
 
